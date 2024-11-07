@@ -37,5 +37,6 @@ BMPFile* loadBMPFile(char* fname);
 void freeBMPFile(BMPFile* bmp_file);
 BMPFile* rotateBMP90Clockwise(const BMPFile* original);
 BMPFile* rotateBMP90Counterclockwise(const BMPFile* original);
+float** createGauss(int size, float sigma);
 
 #endif
