@@ -1,5 +1,7 @@
 #include <iostream>
 #include <fstream>
+#include <cmath>
+#include <cstdlib>
 #include "bmp_reader.hpp"
 
 #ifndef BMP_READER_CPP
@@ -116,6 +118,29 @@ BMPFile* rotateBMP90Counterclockwise(const BMPFile* original) {
         }
     }
     return rotated;
+}
+
+float** createGauss(int size, float sigma) {
+    float** kernel = (float**)malloc(size * sizeof(float*)); //memory allocation for the array of pointers to kernel strings
+    for (int i = 0; i < size; ++i) {
+        kernel[i] = (float*)malloc(size * sizeof(float)); //memory allocation for each kernel core
+    }
+    float sum = 0.0f; //variable for accumulating the sum of values in the kernel
+    int halfsize = size / 2; //calculate half the kernel size
+    
+    for (int y = -halfsize; y <= halfsize; ++y) { //vertical cycle of the Gaussian kernel
+        for (int x = -halfsize; x <= halfsize; ++x) { //cycle along the horizontal of the Gaussian kernel
+            float value = exp(-(x*x + y*y) / (2.0f * sigma * sigma)); //calculate the value for each element of the kernel by the formula
+            kernel[y + halfsize][x + halfsize] = value; //write the calculated value into the corresponding cell of the kernel
+            sum += value; //accumulation of the sum of all kernel values
+        }
+    }
+    for (int y = 0; y < size; ++y) {
+        for (int x = 0; x < size; ++x) {
+            kernel[y][x] /= sum; //normalize each element of the kernel
+        }
+    }
+    return kernel;
 }
 
 #endif
