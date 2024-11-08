@@ -1,6 +1,10 @@
+/* Nikita Kotegov st128906@student.spbu.ru Group B81 Lab_work1 */
 #ifndef BMP_HEADER_HPP
 #define BMP_HEADER_HPP
 #include <iostream>
+#include <fstream>
+#include <cmath>
+#include <cstdlib>
 
 #pragma pack(1)
 struct BMPHeader {
@@ -38,5 +42,7 @@ void freeBMPFile(BMPFile* bmp_file);
 BMPFile* rotateBMP90Clockwise(const BMPFile* original);
 BMPFile* rotateBMP90Counterclockwise(const BMPFile* original);
 float** createGauss(int size, float sigma);
+void apply_Gauss(BMPFile* bmp_file, float** kernel, int kernel_size);
+void free_gauss_kernel(float** kernel, int size);
 
 #endif
