@@ -1,7 +1,3 @@
-#include <iostream>
-#include <fstream>
-#include <cmath>
-#include <cstdlib>
 #include "bmp_reader.hpp"
 
 #ifndef BMP_READER_CPP
@@ -141,6 +137,47 @@ float** createGauss(int size, float sigma) {
         }
     }
     return kernel;
+}
+
+void apply_Gauss(BMPFile* bmp_file, float** kernel, int kernel_size) {
+    int width = bmp_file->dhdr.width;
+    int height = bmp_file->dhdr.height;
+    
+    unsigned char* new_data = (unsigned char*)malloc(bmp_file->dhdr.data_size); //memory allocation for a new array of pixels with processed data
+    
+    int half_kernel_size = kernel_size / 2;
+    int rowSize = ((width * bmp_file->dhdr.bits_per_pixel + 31) / 32) * 4; //determining the size of the image data string
+    
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            float new_red = 0.0f, new_green = 0.0f, new_blue = 0.0f; //Variables for new color channel values
+            for (int ky = -half_kernel_size; ky <= half_kernel_size; ++ky) {
+                for (int kx = -half_kernel_size; kx <= half_kernel_size; ++kx) { //cycle to traverse all kernel pixels
+                    int nx = std::min(std::max(x + kx, 0), width - 1);
+                    int ny = std::min(std::max(y + ky, 0), height - 1);
+                    
+                    int index = (ny * rowSize + nx * 3);
+                    new_red += bmp_file->data[index] * kernel[ky + half_kernel_size][kx + half_kernel_size];   
+                    new_green += bmp_file->data[index + 1] * kernel[ky + half_kernel_size][kx + half_kernel_size];
+                    new_blue += bmp_file->data[index + 2] * kernel[ky + half_kernel_size][kx + half_kernel_size]; 
+                }        
+            }
+        int new_index = (y * width + x) * 3;
+        new_data[new_index] = std::min(std::max(int(new_red), 0), 255);
+        new_data[new_index + 1] = std::min(std::max(int(new_green), 0), 255);
+        new_data[new_index + 2] = std::min(std::max(int(new_blue), 0), 255);       
+        }
+    }
+    
+    free(bmp_file->data);
+    bmp_file->data = new_data;
+}
+
+void free_gauss_kernel(float** kernel, int size) {
+    for (int i = 0; i < size; ++i) {
+        free(kernel[i]);
+    }
+    free(kernel);
 }
 
 #endif
