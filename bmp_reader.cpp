@@ -41,7 +41,13 @@ BMPFile* loadBMPFile(char* fname) {
     fseek(file, bmp_file->bhdr.pixel_offset, SEEK_SET);
     fread(bmp_file->data, bmp_file->dhdr.data_size, 1, file);
     
-    fclose(file);    
+    fclose(file);
+    
+    bmp_file->dhdr.heder_size = 40;      // BITMAPINFOHEADER
+    bmp_file->dhdr.BI_RGB     = 0;       // несжатый
+    bmp_file->bhdr.pixel_offset = 54;    // 14 + 40
+    bmp_file->bhdr.file_size = bmp_file->bhdr.pixel_offset + bmp_file->dhdr.data_size;
+    
     return bmp_file;  
 }
 
@@ -57,36 +63,55 @@ void freeBMPFile(BMPFile* bmp_file) {
 }
 
 BMPFile* rotateBMP90Clockwise(const BMPFile* original) {
+    int bytesPerPixel = original->dhdr.bits_per_pixel / 8;
+    
+    // Создаём структуру для результата
     BMPFile* rotated = (BMPFile*)malloc(sizeof(BMPFile));
     rotated->bhdr = original->bhdr;
     rotated->dhdr = original->dhdr;
     
-    rotated->dhdr.width = original->dhdr.height;
+    // Меняем ширину/высоту
+    rotated->dhdr.width  = original->dhdr.height;
     rotated->dhdr.height = original->dhdr.width;
     
-    rotated->dhdr.data_size = calculateBMPDataSize(rotated->dhdr);
-    rotated->data = (unsigned char*)malloc(rotated->dhdr.data_size);
+    // Пересчитываем размеры
+    rotated->dhdr.data_size         = calculateBMPDataSize(rotated->dhdr);
+    rotated->bhdr.pixel_offset      = sizeof(BMPHeader) + sizeof(DIBHeader);
+    rotated->bhdr.file_size         = rotated->bhdr.pixel_offset + rotated->dhdr.data_size;
+    rotated->data                   = (unsigned char*)malloc(rotated->dhdr.data_size);
     
+    // Размер одной строки в старом и новом BMP
     size_t original_size = ((original->dhdr.width * original->dhdr.bits_per_pixel + 31) / 32) * 4;
-    size_t rotate_size = ((rotated->dhdr.width * rotated->dhdr.bits_per_pixel + 31) / 32) * 4;
+    size_t rotate_size   = ((rotated->dhdr.width * rotated->dhdr.bits_per_pixel + 31) / 32) * 4;
 
+    // Пиксельный цикл
     for (int y = 0; y < original->dhdr.height; y++) {
         for (int x = 0; x < original->dhdr.width; x ++) {
-        int original_index = y * original_size + x * 3;
-        
-        int new_x = original->dhdr.height - 1 - y;
-        int new_y = x;
-        int rotate_index = new_y * rotate_size + new_x * 3;
-        
-        rotated->data[rotate_index] = original->data[original_index];
-        rotated->data[rotate_index + 1] = original->data[original_index + 1];
-        rotated->data[rotate_index + 2] = original->data[original_index + 2];
+
+            // 1. Читаем из исходного "снизу-вверх"
+            int realY = original->dhdr.height - 1 - y;
+            int original_index = realY * original_size + x * bytesPerPixel;
+
+            // 2. Координаты 90° clockwise (логический поворот):
+            int newX = y;
+            int newY = (original->dhdr.width - 1) - x;
+
+            // 3. Записываем тоже "снизу-вверх"
+            int realNewY = rotated->dhdr.height - 1 - newY;
+            int rotate_index = realNewY * rotate_size + newX * bytesPerPixel;
+
+            // 4. Копируем пиксель (bytesPerPixel байт)
+            for (int c = 0; c < bytesPerPixel; c++) {
+                rotated->data[rotate_index + c] = original->data[original_index + c];
+            }
         }
     }
     return rotated;
 }
 
+
 BMPFile* rotateBMP90Counterclockwise(const BMPFile* original) {
+    int bytesPerPixel = original->dhdr.bits_per_pixel / 8;
     BMPFile* rotated = (BMPFile*)malloc(sizeof(BMPFile));
     rotated->bhdr = original->bhdr;
     rotated->dhdr = original->dhdr;
@@ -95,6 +120,10 @@ BMPFile* rotateBMP90Counterclockwise(const BMPFile* original) {
     rotated->dhdr.height = original->dhdr.width;
     
     rotated->dhdr.data_size = calculateBMPDataSize(rotated->dhdr);
+    
+    rotated->bhdr.pixel_offset = sizeof(BMPHeader) + sizeof(DIBHeader);
+    rotated->bhdr.file_size    = rotated->bhdr.pixel_offset + rotated->dhdr.data_size;
+
     rotated->data = (unsigned char*)malloc(rotated->dhdr.data_size);
     
     size_t original_size = ((original->dhdr.width * original->dhdr.bits_per_pixel + 31) / 32) * 4;
@@ -102,15 +131,15 @@ BMPFile* rotateBMP90Counterclockwise(const BMPFile* original) {
 
     for (int y = 0; y < original->dhdr.height; y++) {
         for (int x = 0; x < original->dhdr.width; x ++) {
-        int original_index = y * original_size + x * 3;
-        
-        int new_x = y;
-        int new_y = original->dhdr.width - 1 - x;
-        int rotate_index = new_y * rotate_size + new_x * 3;
-        
-        rotated->data[rotate_index] = original->data[original_index];
-        rotated->data[rotate_index + 1] = original->data[original_index + 1];
-        rotated->data[rotate_index + 2] = original->data[original_index + 2];
+            int original_index = (original->dhdr.height - 1 - y) * original_size + x * bytesPerPixel;
+            
+            int new_x = (original->dhdr.height - 1) - y;
+            int new_y = x;
+            int rotate_index = new_y * rotate_size + new_x * bytesPerPixel;
+            
+            for (int c = 0; c < bytesPerPixel; c++) {
+                rotated->data[rotate_index + c] = original->data[original_index + c];
+            }
         }
     }
     return rotated;
@@ -162,7 +191,7 @@ void apply_Gauss(BMPFile* bmp_file, float** kernel, int kernel_size) {
                     new_blue += bmp_file->data[index + 2] * kernel[ky + half_kernel_size][kx + half_kernel_size]; 
                 }        
             }
-        int new_index = (y * width + x) * 3;
+        int new_index = y * rowSize + x * 3;
         new_data[new_index] = std::min(std::max(int(new_red), 0), 255);
         new_data[new_index + 1] = std::min(std::max(int(new_green), 0), 255);
         new_data[new_index + 2] = std::min(std::max(int(new_blue), 0), 255);       
