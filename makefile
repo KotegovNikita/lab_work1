@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -g
+CXXFLAGS = -g -Werror -Wpedantic -Wall
 
 objects = $(files:.cpp=.o)
 files = main.cpp bmp_reader.cpp
@@ -18,3 +18,4 @@ $(target): $(objects)
 .PHONY: clean
 clean:
 	rm -f $(objects) $(target) 
+

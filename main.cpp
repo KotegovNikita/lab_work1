@@ -15,15 +15,13 @@ int main(int argc, char* argv[]) {
     BMPFile* rotated_image_clockwise = rotateBMP90Counterclockwise(bmp_file);
     save_BMPFile(rotated_image_clockwise, "rotated_image_clockwise.bmp");
     
-    int kernel_size = 19;
-    float sigma = 1.0f;
-  
-    float** kernel = createGauss(kernel_size, sigma);
+    int kernel_size = 5;
+    float sigma = 1.8f;
     
-    apply_Gauss(rotated_image_counterclockwise, kernel, kernel_size);
+    applyGaussSeparable(rotated_image_counterclockwise, kernel_size, sigma);
     save_BMPFile(rotated_image_counterclockwise, "rotated_image_counterclockwise_with_gauss.bmp");
     
-    apply_Gauss(rotated_image_clockwise, kernel, kernel_size);
+    applyGaussSeparable(rotated_image_clockwise, kernel_size, sigma);
     save_BMPFile(rotated_image_clockwise, "rotated_image_clockwise_with_gauss.bmp");
     
     freeBMPFile(bmp_file);
@@ -32,3 +30,6 @@ int main(int argc, char* argv[]) {
     
     return 0;
 }
+
+// исправить исходники 
+// Написать пару страниц про работу гауса в своей программе
