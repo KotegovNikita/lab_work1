@@ -1,9 +1,9 @@
 CXX = g++
-CXXFLAGS = -g -Werror -Wpedantic -Wall
+CXXFLAGS = -g -Werror -Wpedantic -Wall -Iincludes
 
 objects = $(files:.cpp=.o)
-files = main.cpp bmp_reader.cpp
-deps = bmp_reader.hpp
+files = src/main.cpp src/bmp_reader.cpp
+deps = includes/bmp_reader.hpp
 
 target = bmpreader
 
